@@ -1,0 +1,155 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Authenticated user profile in FamSync",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Auth UID of the user" },
+        "displayName": { "type": "string", "description": "Display name" },
+        "email": { "type": "string", "description": "Email address" },
+        "role": { "type": "string", "description": "Family role" },
+        "familyId": { "type": "string", "description": "ID of family" },
+        "avatarEmoji": { "type": "string", "description": "Avatar emoji" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp (FieldValue.serverTimestamp())" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update timestamp (FieldValue.serverTimestamp())" }
+      },
+      "required": ["userId", "displayName", "email", "role", "familyId", "createdAt"]
+    },
+    "Event": {
+      "title": "Event",
+      "description": "Calendar event for family members",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Event ID" },
+        "userId": { "type": "string", "description": "Auth UID of creator" },
+        "familyId": { "type": "string", "description": "Family ID" },
+        "title": { "type": "string", "description": "Event title" },
+        "startTime": { "type": "string", "description": "Start time HH:mm" },
+        "endTime": { "type": "string", "description": "End time HH:mm" },
+        "date": { "type": "string", "description": "Date YYYY-MM-DD" },
+        "location": { "type": "string", "description": "Location" },
+        "category": { "type": "string", "description": "Category" },
+        "priority": { "type": "string", "description": "Priority" },
+        "reminderMinutes": { "type": "integer", "description": "Reminder minutes prior" },
+        "assignedTo": { "type": "string", "description": "Assigned member name" },
+        "isRecurring": { "type": "boolean", "description": "Whether event recurs" },
+        "recurrenceRule": { "type": "string", "description": "Recurrence pattern" },
+        "notes": { "type": "string", "description": "Event notes" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update timestamp" }
+      },
+      "required": ["id", "userId", "familyId", "title", "startTime", "endTime", "date", "createdAt"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "Family task or chore",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Task ID" },
+        "userId": { "type": "string", "description": "Auth UID of creator" },
+        "familyId": { "type": "string", "description": "Family ID" },
+        "title": { "type": "string", "description": "Task title" },
+        "assignedTo": { "type": "string", "description": "Assigned member" },
+        "dueDate": { "type": "string", "description": "Due date YYYY-MM-DD" },
+        "dueTime": { "type": "string", "description": "Due time HH:mm" },
+        "isCompleted": { "type": "boolean", "description": "Completion state" },
+        "isRecurring": { "type": "boolean", "description": "Recurring chore" },
+        "recurrencePattern": { "type": "string", "description": "Recurrence frequency" },
+        "category": { "type": "string", "description": "Category" },
+        "priority": { "type": "string", "description": "Priority level" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update timestamp" }
+      },
+      "required": ["id", "userId", "familyId", "title", "assignedTo", "dueDate", "isCompleted", "createdAt"]
+    },
+    "Alarm": {
+      "title": "Alarm",
+      "description": "Smart family alarm or reminder",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Alarm ID" },
+        "userId": { "type": "string", "description": "Auth UID of creator" },
+        "familyId": { "type": "string", "description": "Family ID" },
+        "title": { "type": "string", "description": "Alarm title" },
+        "time": { "type": "string", "description": "Time HH:mm" },
+        "days": { "type": "string", "description": "Active days" },
+        "isEnabled": { "type": "boolean", "description": "Enabled status" },
+        "isRecurring": { "type": "boolean", "description": "Recurring flag" },
+        "type": { "type": "string", "description": "Type: ALARM or REMINDER" },
+        "soundName": { "type": "string", "description": "Sound tone" },
+        "vibrate": { "type": "boolean", "description": "Vibrate flag" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update timestamp" }
+      },
+      "required": ["id", "userId", "familyId", "title", "time", "isEnabled", "type", "createdAt"]
+    },
+    "DiaryEntry": {
+      "title": "DiaryEntry",
+      "description": "Family diary journal entry and milestone",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Entry ID" },
+        "userId": { "type": "string", "description": "Auth UID of creator" },
+        "familyId": { "type": "string", "description": "Family ID" },
+        "authorName": { "type": "string", "description": "Author name" },
+        "authorRole": { "type": "string", "description": "Author role" },
+        "date": { "type": "string", "description": "Date YYYY-MM-DD" },
+        "title": { "type": "string", "description": "Entry title" },
+        "content": { "type": "string", "description": "Journal text" },
+        "moodEmoji": { "type": "string", "description": "Mood emoji" },
+        "hasPhoto": { "type": "boolean", "description": "Photo attachment" },
+        "tags": { "type": "string", "description": "Tags" },
+        "reactions": { "type": "string", "description": "Reactions" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update timestamp" }
+      },
+      "required": ["id", "userId", "familyId", "authorName", "date", "title", "content", "createdAt"]
+    },
+    "ShoppingItem": {
+      "title": "ShoppingItem",
+      "description": "Family shopping grocery item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Item ID" },
+        "userId": { "type": "string", "description": "Auth UID of creator" },
+        "familyId": { "type": "string", "description": "Family ID" },
+        "name": { "type": "string", "description": "Item name" },
+        "quantity": { "type": "string", "description": "Quantity" },
+        "category": { "type": "string", "description": "Category" },
+        "addedBy": { "type": "string", "description": "Added by member" },
+        "isPurchased": { "type": "boolean", "description": "Purchased status" },
+        "urgent": { "type": "boolean", "description": "Urgent flag" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update timestamp" }
+      },
+      "required": ["id", "userId", "familyId", "name", "category", "addedBy", "isPurchased", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/events/{eventId}": {
+      "schema": "Event",
+      "description": "Family and personal calendar events"
+    },
+    "/tasks/{taskId}": {
+      "schema": "Task",
+      "description": "Family chores and tasks"
+    },
+    "/alarms/{alarmId}": {
+      "schema": "Alarm",
+      "description": "Alarms and smart reminders"
+    },
+    "/diary/{entryId}": {
+      "schema": "DiaryEntry",
+      "description": "Family diary and memories"
+    },
+    "/shopping/{itemId}": {
+      "schema": "ShoppingItem",
+      "description": "Family shopping list items"
+    }
+  }
+}

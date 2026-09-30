@@ -1,0 +1,6 @@
+{
+  "name": "Legacy – FamSync",
+  "description": "Intelligent family organization, calendar, tasks, smart reminders, and AI family assistant.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

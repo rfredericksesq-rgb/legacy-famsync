@@ -1,0 +1,218 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128;
+    }
+
+    function isValidUser(data) {
+      return data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+             data.displayName is string && data.displayName.size() > 0 && data.displayName.size() <= 100 &&
+             data.email is string && data.email.size() > 0 && data.email.size() <= 150 &&
+             data.role is string && data.role.size() > 0 && data.role.size() <= 50 &&
+             data.familyId is string && data.familyId.size() > 0 && data.familyId.size() <= 100 &&
+             (!('avatarEmoji' in data) || (data.avatarEmoji is string && data.avatarEmoji.size() <= 20)) &&
+             data.createdAt is timestamp &&
+             (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    function isValidEvent(data) {
+      return data.id is string && data.id.size() > 0 && data.id.size() <= 128 &&
+             data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+             data.familyId is string && data.familyId.size() > 0 && data.familyId.size() <= 100 &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
+             data.startTime is string && data.startTime.size() > 0 && data.startTime.size() <= 10 &&
+             data.endTime is string && data.endTime.size() > 0 && data.endTime.size() <= 10 &&
+             data.date is string && data.date.size() > 0 && data.date.size() <= 20 &&
+             (!('location' in data) || (data.location is string && data.location.size() <= 200)) &&
+             (!('category' in data) || (data.category is string && data.category.size() <= 50)) &&
+             (!('priority' in data) || (data.priority is string && data.priority.size() <= 50)) &&
+             (!('reminderMinutes' in data) || (data.reminderMinutes is int || data.reminderMinutes is number)) &&
+             (!('assignedTo' in data) || (data.assignedTo is string && data.assignedTo.size() <= 100)) &&
+             (!('isRecurring' in data) || (data.isRecurring is bool)) &&
+             (!('recurrenceRule' in data) || (data.recurrenceRule is string && data.recurrenceRule.size() <= 100)) &&
+             (!('notes' in data) || (data.notes is string && data.notes.size() <= 1000)) &&
+             data.createdAt is timestamp &&
+             (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    function isValidTask(data) {
+      return data.id is string && data.id.size() > 0 && data.id.size() <= 128 &&
+             data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+             data.familyId is string && data.familyId.size() > 0 && data.familyId.size() <= 100 &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
+             data.assignedTo is string && data.assignedTo.size() > 0 && data.assignedTo.size() <= 100 &&
+             data.dueDate is string && data.dueDate.size() > 0 && data.dueDate.size() <= 20 &&
+             (!('dueTime' in data) || (data.dueTime is string && data.dueTime.size() <= 10)) &&
+             data.isCompleted is bool &&
+             (!('isRecurring' in data) || (data.isRecurring is bool)) &&
+             (!('recurrencePattern' in data) || (data.recurrencePattern is string && data.recurrencePattern.size() <= 100)) &&
+             (!('category' in data) || (data.category is string && data.category.size() <= 50)) &&
+             (!('priority' in data) || (data.priority is string && data.priority.size() <= 50)) &&
+             data.createdAt is timestamp &&
+             (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    function isValidAlarm(data) {
+      return data.id is string && data.id.size() > 0 && data.id.size() <= 128 &&
+             data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+             data.familyId is string && data.familyId.size() > 0 && data.familyId.size() <= 100 &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
+             data.time is string && data.time.size() > 0 && data.time.size() <= 10 &&
+             (!('days' in data) || (data.days is string && data.days.size() <= 100)) &&
+             data.isEnabled is bool &&
+             (!('isRecurring' in data) || (data.isRecurring is bool)) &&
+             data.type is string && data.type.size() > 0 && data.type.size() <= 50 &&
+             (!('soundName' in data) || (data.soundName is string && data.soundName.size() <= 100)) &&
+             (!('vibrate' in data) || (data.vibrate is bool)) &&
+             data.createdAt is timestamp &&
+             (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    function isValidDiaryEntry(data) {
+      return data.id is string && data.id.size() > 0 && data.id.size() <= 128 &&
+             data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+             data.familyId is string && data.familyId.size() > 0 && data.familyId.size() <= 100 &&
+             data.authorName is string && data.authorName.size() > 0 && data.authorName.size() <= 100 &&
+             (!('authorRole' in data) || (data.authorRole is string && data.authorRole.size() <= 50)) &&
+             data.date is string && data.date.size() > 0 && data.date.size() <= 20 &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
+             data.content is string && data.content.size() > 0 && data.content.size() <= 5000 &&
+             (!('moodEmoji' in data) || (data.moodEmoji is string && data.moodEmoji.size() <= 20)) &&
+             (!('hasPhoto' in data) || (data.hasPhoto is bool)) &&
+             (!('tags' in data) || (data.tags is string && data.tags.size() <= 200)) &&
+             (!('reactions' in data) || (data.reactions is string && data.reactions.size() <= 200)) &&
+             data.createdAt is timestamp &&
+             (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    function isValidShoppingItem(data) {
+      return data.id is string && data.id.size() > 0 && data.id.size() <= 128 &&
+             data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+             data.familyId is string && data.familyId.size() > 0 && data.familyId.size() <= 100 &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 200 &&
+             (!('quantity' in data) || (data.quantity is string && data.quantity.size() <= 50)) &&
+             data.category is string && data.category.size() > 0 && data.category.size() <= 50 &&
+             data.addedBy is string && data.addedBy.size() > 0 && data.addedBy.size() <= 100 &&
+             data.isPurchased is bool &&
+             (!('urgent' in data) || (data.urgent is bool)) &&
+             data.createdAt is timestamp &&
+             (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    // USERS COLLECTION
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if isSignedIn();
+      allow create: if isOwner(userId) &&
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.createdAt is timestamp &&
+                       request.resource.data.createdAt <= request.time &&
+                       isValidUser(request.resource.data);
+      allow update: if isOwner(userId) &&
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.createdAt == resource.data.createdAt &&
+                       isValidUser(request.resource.data);
+      allow delete: if isOwner(userId);
+    }
+
+    // EVENTS COLLECTION
+    match /events/{eventId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() &&
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.createdAt is timestamp &&
+                       request.resource.data.createdAt <= request.time &&
+                       isValidId(eventId) &&
+                       isValidEvent(request.resource.data);
+      allow update: if isSignedIn() &&
+                       resource.data.userId == request.auth.uid &&
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.createdAt == resource.data.createdAt &&
+                       isValidId(eventId) &&
+                       isValidEvent(request.resource.data);
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // TASKS COLLECTION
+    match /tasks/{taskId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() &&
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.createdAt is timestamp &&
+                       request.resource.data.createdAt <= request.time &&
+                       isValidId(taskId) &&
+                       isValidTask(request.resource.data);
+      allow update: if isSignedIn() &&
+                       resource.data.userId == request.auth.uid &&
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.createdAt == resource.data.createdAt &&
+                       isValidId(taskId) &&
+                       isValidTask(request.resource.data);
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // ALARMS COLLECTION
+    match /alarms/{alarmId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() &&
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.createdAt is timestamp &&
+                       request.resource.data.createdAt <= request.time &&
+                       isValidId(alarmId) &&
+                       isValidAlarm(request.resource.data);
+      allow update: if isSignedIn() &&
+                       resource.data.userId == request.auth.uid &&
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.createdAt == resource.data.createdAt &&
+                       isValidId(alarmId) &&
+                       isValidAlarm(request.resource.data);
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // DIARY COLLECTION
+    match /diary/{entryId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() &&
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.createdAt is timestamp &&
+                       request.resource.data.createdAt <= request.time &&
+                       isValidId(entryId) &&
+                       isValidDiaryEntry(request.resource.data);
+      allow update: if isSignedIn() &&
+                       resource.data.userId == request.auth.uid &&
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.createdAt == resource.data.createdAt &&
+                       isValidId(entryId) &&
+                       isValidDiaryEntry(request.resource.data);
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // SHOPPING COLLECTION
+    match /shopping/{itemId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() &&
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.createdAt is timestamp &&
+                       request.resource.data.createdAt <= request.time &&
+                       isValidId(itemId) &&
+                       isValidShoppingItem(request.resource.data);
+      allow update: if isSignedIn() &&
+                       resource.data.userId == request.auth.uid &&
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.createdAt == resource.data.createdAt &&
+                       isValidId(itemId) &&
+                       isValidShoppingItem(request.resource.data);
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+  }
+}
