@@ -27,10 +27,12 @@ fun AlarmsScreen(
     alarms: List<FamilyAlarmEntity>,
     onToggleAlarm: (FamilyAlarmEntity) -> Unit,
     onAddAlarm: (title: String, time: String, daysOfWeek: String, isRecurring: Boolean) -> Unit,
+    onUpdateAlarm: (FamilyAlarmEntity) -> Unit = {},
     onDeleteAlarm: (FamilyAlarmEntity) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
+    var editingAlarm by remember { mutableStateOf<FamilyAlarmEntity?>(null) }
 
     val smartRecommendations = remember(alarms) { alarms.filter { it.isSmartRecommendation } }
     val regularAlarms = remember(alarms) { alarms.filter { !it.isSmartRecommendation } }
@@ -56,125 +58,108 @@ fun AlarmsScreen(
             contentPadding = PaddingValues(top = 12.dp, bottom = 80.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Header
             item {
                 Column {
                     Text(
-                        text = "ALARMS & REMINDERS",
+                        text = "SMART ALARMS & REMINDERS",
                         style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Smart family wake-ups, departure alerts and synchronized reminders.",
+                        text = "Synchronized family wake-ups and proactive departure reminders.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
-            // Smart AI Recommendations Card
-            if (smartRecommendations.isNotEmpty()) {
+            if (alarms.isEmpty()) {
                 item {
-                    Text(
-                        text = "SMART AI RECOMMENDATIONS",
-                        style = MaterialTheme.typography.labelLarge.copy(
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
-                        ),
-                        color = MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
-
-                items(smartRecommendations) { rec ->
                     Surface(
-                        shape = RoundedCornerShape(18.dp),
-                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.45f),
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .background(MaterialTheme.colorScheme.secondary, CircleShape),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.AutoAwesome,
-                                        contentDescription = null,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = "Upcoming School Trip Suggested Reminder",
-                                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
-                                    )
-                                    Text(
-                                        text = "You have a school trip tomorrow. Remind the family tonight at ${rec.time} to prepare bags?",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.End
-                            ) {
-                                TextButton(
-                                    onClick = { onDeleteAlarm(rec) }
-                                ) {
-                                    Text("Dismiss", color = Color.Gray)
-                                }
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Button(
-                                    onClick = {
-                                        onToggleAlarm(rec.copy(isEnabled = true, isSmartRecommendation = false))
-                                    },
-                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                                ) {
-                                    Text("Enable Reminder")
-                                }
-                            }
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(text = "⏰", fontSize = 40.sp)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "No alarms configured",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                            )
+                            Text(
+                                text = "Tap the + button to create a family wake-up alarm or departure reminder.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
             }
 
-            // Regular Alarms Header
-            item {
-                Text(
-                    text = "ACTIVE ALARMS & REMINDERS",
-                    style = MaterialTheme.typography.labelLarge.copy(
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
-                    ),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
+            // Smart Departure Reminders
+            if (smartRecommendations.isNotEmpty()) {
+                item {
+                    Text(
+                        text = "AI SMART DEPARTURE REMINDERS",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                items(smartRecommendations) { alarm ->
+                    AlarmItemRow(
+                        alarm = alarm,
+                        onToggle = { onToggleAlarm(alarm) },
+                        onEdit = { editingAlarm = alarm },
+                        onDelete = { onDeleteAlarm(alarm) }
+                    )
+                }
             }
 
-            items(regularAlarms) { alarm ->
-                AlarmCard(
-                    alarm = alarm,
-                    onToggle = { onToggleAlarm(alarm) },
-                    onDelete = { onDeleteAlarm(alarm) }
-                )
+            // Regular Alarms
+            if (regularAlarms.isNotEmpty()) {
+                item {
+                    Text(
+                        text = "FAMILY ALARMS",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                items(regularAlarms) { alarm ->
+                    AlarmItemRow(
+                        alarm = alarm,
+                        onToggle = { onToggleAlarm(alarm) },
+                        onEdit = { editingAlarm = alarm },
+                        onDelete = { onDeleteAlarm(alarm) }
+                    )
+                }
             }
         }
 
         if (showAddDialog) {
             AddAlarmDialog(
                 onDismiss = { showAddDialog = false },
-                onConfirm = { title, time, days, rec ->
-                    onAddAlarm(title, time, days, rec)
+                onConfirm = { title, time, days, isRecurring ->
+                    onAddAlarm(title, time, days, isRecurring)
                     showAddDialog = false
+                }
+            )
+        }
+
+        editingAlarm?.let { alarm ->
+            EditAlarmDialog(
+                alarm = alarm,
+                onDismiss = { editingAlarm = null },
+                onSave = { updated ->
+                    onUpdateAlarm(updated)
+                    editingAlarm = null
+                },
+                onDelete = {
+                    onDeleteAlarm(alarm)
+                    editingAlarm = null
                 }
             )
         }
@@ -182,9 +167,10 @@ fun AlarmsScreen(
 }
 
 @Composable
-fun AlarmCard(
+fun AlarmItemRow(
     alarm: FamilyAlarmEntity,
     onToggle: () -> Unit,
+    onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
     Surface(
@@ -193,6 +179,8 @@ fun AlarmCard(
         tonalElevation = 1.dp,
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .clickable { onEdit() }
             .testTag("alarm_item_${alarm.id}")
     ) {
         Row(
@@ -202,32 +190,114 @@ fun AlarmCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = alarm.time,
-                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-                    color = if (alarm.isEnabled) MaterialTheme.colorScheme.onSurface else Color.Gray
+                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                    color = if (alarm.isEnabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                 )
+
                 Text(
                     text = alarm.title,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = if (alarm.isEnabled) MaterialTheme.colorScheme.onSurface else Color.Gray
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
+
+                Spacer(modifier = Modifier.height(2.dp))
+
                 Text(
-                    text = "${alarm.daysOfWeek} • ${if (alarm.isRecurring) "Repeating" else "Once"}",
+                    text = "${alarm.daysOfWeek} • ${if (alarm.isRecurring) "Recurring" else "One-time"}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
-            IconButton(onClick = onDelete) {
-                Icon(imageVector = Icons.Default.DeleteOutline, contentDescription = "Delete")
+            IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
+                Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit Alarm", modifier = Modifier.size(16.dp))
             }
 
             Switch(
                 checked = alarm.isEnabled,
                 onCheckedChange = { onToggle() },
-                modifier = Modifier.testTag("switch_alarm_${alarm.id}")
+                modifier = Modifier.testTag("toggle_alarm_${alarm.id}")
             )
         }
     }
+}
+
+@Composable
+fun EditAlarmDialog(
+    alarm: FamilyAlarmEntity,
+    onDismiss: () -> Unit,
+    onSave: (FamilyAlarmEntity) -> Unit,
+    onDelete: () -> Unit
+) {
+    var title by remember(alarm) { mutableStateOf(alarm.title) }
+    var time by remember(alarm) { mutableStateOf(alarm.time) }
+    var days by remember(alarm) { mutableStateOf(alarm.daysOfWeek) }
+    var isRecurring by remember(alarm) { mutableStateOf(alarm.isRecurring) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit Alarm") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("Alarm Label *") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = time,
+                    onValueChange = { time = it },
+                    label = { Text("Time (HH:mm)") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = days,
+                    onValueChange = { days = it },
+                    label = { Text("Days (e.g. Weekdays, Everyday)") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = isRecurring, onCheckedChange = { isRecurring = it })
+                    Text("Recurring alarm")
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+                TextButton(
+                    onClick = onDelete,
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Icon(imageVector = Icons.Default.Delete, contentDescription = null)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Delete Alarm")
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (title.isNotBlank()) {
+                        onSave(
+                            alarm.copy(
+                                title = title.trim(),
+                                time = time.trim(),
+                                daysOfWeek = days.trim(),
+                                isRecurring = isRecurring
+                            )
+                        )
+                    }
+                }
+            ) {
+                Text("Save Changes")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
 }
 
 @Composable
@@ -237,21 +307,18 @@ fun AddAlarmDialog(
 ) {
     var title by remember { mutableStateOf("") }
     var time by remember { mutableStateOf("07:00") }
-    var daysOfWeek by remember { mutableStateOf("Weekdays") }
+    var days by remember { mutableStateOf("Weekdays") }
     var isRecurring by remember { mutableStateOf(true) }
-
-    val daysOptions = listOf("Weekdays", "Everyday", "Weekends", "Today Only")
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Set Alarm or Reminder") },
+        title = { Text("Set Family Alarm") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("Label (e.g. School Wake-up)") },
-                    singleLine = true,
+                    label = { Text("Alarm Label *") },
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -259,22 +326,19 @@ fun AddAlarmDialog(
                     value = time,
                     onValueChange = { time = it },
                     label = { Text("Time (HH:mm)") },
-                    singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Text("Repeat", style = MaterialTheme.typography.labelMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    daysOptions.forEach { d ->
-                        FilterChip(
-                            selected = daysOfWeek == d,
-                            onClick = {
-                                daysOfWeek = d
-                                isRecurring = d != "Today Only"
-                            },
-                            label = { Text(d) }
-                        )
-                    }
+                OutlinedTextField(
+                    value = days,
+                    onValueChange = { days = it },
+                    label = { Text("Days (e.g. Weekdays, Everyday)") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = isRecurring, onCheckedChange = { isRecurring = it })
+                    Text("Recurring alarm")
                 }
             }
         },
@@ -282,7 +346,7 @@ fun AddAlarmDialog(
             Button(
                 onClick = {
                     if (title.isNotBlank()) {
-                        onConfirm(title, time, daysOfWeek, isRecurring)
+                        onConfirm(title, time, days, isRecurring)
                     }
                 }
             ) {
@@ -290,7 +354,9 @@ fun AddAlarmDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
         }
     )
 }

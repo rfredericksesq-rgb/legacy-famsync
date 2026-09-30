@@ -43,11 +43,15 @@ fun FamSyncRoot(viewModel: FamilyViewModel) {
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
     val authLoading by viewModel.authLoading.collectAsStateWithLifecycle()
     val authError by viewModel.authError.collectAsStateWithLifecycle()
+    var bypassSignIn by remember { mutableStateOf(false) }
 
-    if (currentUser == null) {
+    if (currentUser == null && !bypassSignIn) {
         SignInScreen(
             onGoogleSignIn = { idToken ->
                 viewModel.signInWithGoogle(idToken)
+            },
+            onContinueAsGuest = {
+                bypassSignIn = true
             },
             isLoading = authLoading,
             errorMessage = authError
@@ -101,7 +105,15 @@ fun MainAppScreen(viewModel: FamilyViewModel) {
     }
 
     if (isOnboardingActive) {
-        OnboardingScreen(onFinish = { isOnboardingActive = false })
+        OnboardingScreen(
+            currentName = currentMember?.name ?: "",
+            currentEmail = currentMember?.email ?: "",
+            currentFamilyName = family?.name ?: "",
+            onFinish = { userName, userEmail, familyName ->
+                viewModel.setupUserFamily(userName, userEmail, familyName)
+                isOnboardingActive = false
+            }
+        )
         return
     }
 
@@ -139,7 +151,7 @@ fun MainAppScreen(viewModel: FamilyViewModel) {
             Scaffold(
                 topBar = {
                     FamilyTopBar(
-                        familyName = family?.name ?: "The Williams Family",
+                        familyName = family?.name ?: "My Family",
                         currentMember = currentMember,
                         unreadNotificationsCount = unreadNotifications,
                         onOpenMemberSwitcher = { showMemberSwitcher = true },
@@ -274,8 +286,17 @@ fun MainAppScreen(viewModel: FamilyViewModel) {
                                 onSelectMember = {
                                     viewModel.switchActiveMember(it)
                                 },
-                                onInviteMember = { name, email, role, age ->
-                                    viewModel.inviteMember(name, email, role, age)
+                                onAddMember = { name, email, role, age, emoji, color ->
+                                    viewModel.addMember(name, email, role, age, emoji, color)
+                                },
+                                onUpdateMember = { member ->
+                                    viewModel.updateMember(member)
+                                },
+                                onDeleteMember = { member ->
+                                    viewModel.deleteMember(member)
+                                },
+                                onUpdateFamily = { name, code ->
+                                    viewModel.updateFamily(name, code)
                                 },
                                 onAddAnnouncement = { viewModel.addAnnouncement(it) },
                                 onReactToAnnouncement = { ann, type -> viewModel.reactToAnnouncement(ann, type) }
@@ -320,6 +341,10 @@ fun MainAppScreen(viewModel: FamilyViewModel) {
             currentMember = currentMember,
             onSelectMember = {
                 viewModel.switchActiveMember(it)
+                showMemberSwitcher = false
+            },
+            onAddNewMember = {
+                currentDestination = AppDestination.FAMILY
                 showMemberSwitcher = false
             },
             onDismiss = { showMemberSwitcher = false }

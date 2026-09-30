@@ -37,6 +37,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun SignInScreen(
     onGoogleSignIn: (String) -> Unit,
+    onContinueAsGuest: () -> Unit = {},
     isLoading: Boolean = false,
     errorMessage: String? = null,
     modifier: Modifier = Modifier
@@ -267,10 +268,40 @@ fun SignInScreen(
                 }
             }
 
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Continue as Local Family Button (immediate access & fully editable)
+            OutlinedButton(
+                onClick = onContinueAsGuest,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .testTag("continue_local_hub_button"),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = Color.White
+                ),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF64748B))
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Home,
+                    contentDescription = null,
+                    tint = Color(0xFF38BDF8),
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = "Continue as Local Family Hub",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White
+                )
+            }
+
             Spacer(modifier = Modifier.height(20.dp))
 
             Text(
-                text = "Secure authentication via Google Identity & Firebase Auth",
+                text = "Cloud sync via Google & Firebase • Fully editable offline",
                 style = MaterialTheme.typography.labelSmall,
                 color = Color(0xFF94A3B8),
                 textAlign = TextAlign.Center

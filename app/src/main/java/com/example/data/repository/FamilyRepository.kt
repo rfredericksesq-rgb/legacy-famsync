@@ -165,7 +165,68 @@ class FamilyRepository(private val dao: FamilyDao) {
     suspend fun insertImportantDate(date: ImportantDateEntity) = dao.insertImportantDate(date)
 
     suspend fun insertMember(member: FamilyMemberEntity) = dao.insertMember(member)
+    suspend fun updateMember(member: FamilyMemberEntity) = dao.updateMember(member)
     suspend fun deleteMember(member: FamilyMemberEntity) = dao.deleteMember(member)
+    suspend fun updateFamily(family: FamilyEntity) = dao.updateFamily(family)
+
+    suspend fun purgeDefaultUsersAndEnsureClean(defaultAdminName: String = "Family Admin", defaultEmail: String = "") {
+        val defaultNames = listOf("Sarah", "Mark", "Daniel", "Emily", "Grandma Martha")
+        dao.deleteMembersByNames(defaultNames)
+        dao.deleteEventsByMemberNames(defaultNames)
+        dao.deleteTasksByMemberNames(defaultNames)
+        dao.sanitizeLegacyFamilyName()
+
+        val remaining = dao.getMembersOnce(1)
+        if (remaining.isEmpty()) {
+            dao.insertMember(
+                FamilyMemberEntity(
+                    id = 1,
+                    familyId = 1,
+                    name = defaultAdminName.ifBlank { "Family Admin" },
+                    role = MemberRole.ADMIN,
+                    ageCategory = AgeCategory.ADULT,
+                    avatarEmoji = "👑",
+                    colorHex = "#2563EB",
+                    email = defaultEmail
+                )
+            )
+        }
+    }
+
+    suspend fun ensurePrimaryMember(defaultAdminName: String = "Family Admin", defaultEmail: String = "") {
+        val existing = dao.getMembersOnce(1)
+        if (existing.isEmpty()) {
+            dao.insertMember(
+                FamilyMemberEntity(
+                    id = 1,
+                    familyId = 1,
+                    name = defaultAdminName.ifBlank { "Family Admin" },
+                    role = MemberRole.ADMIN,
+                    ageCategory = AgeCategory.ADULT,
+                    avatarEmoji = "👑",
+                    colorHex = "#2563EB",
+                    email = defaultEmail
+                )
+            )
+        }
+    }
+
+    suspend fun resetToUserFamily(userMember: FamilyMemberEntity, familyName: String) {
+        dao.deleteAllMembers()
+        dao.insertFamily(
+            FamilyEntity(
+                id = 1,
+                name = familyName,
+                inviteCode = "FAM-" + (1000..9999).random()
+            )
+        )
+        dao.insertMember(userMember)
+        dao.deleteAllEvents()
+        dao.deleteAllTasks()
+        dao.deleteAllAlarms()
+        dao.deleteAllDiaryEntries()
+        dao.deleteAllShoppingItems()
+    }
 
     suspend fun markAllNotificationsRead(familyId: Int = 1) = dao.markAllNotificationsRead(familyId)
     suspend fun clearAllNotifications(familyId: Int = 1) = dao.clearAllNotifications(familyId)

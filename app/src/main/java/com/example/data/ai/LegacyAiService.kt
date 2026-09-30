@@ -92,7 +92,12 @@ class LegacyAiService {
         val totalTasks = tasks.size
 
         if (isEvening) {
-            return@withContext "Good evening, $memberName. You completed $completedTasks of today's $totalTasks tasks. Tomorrow the family has 3 activities scheduled. Daniel has school at 08:00 and soccer at 17:00."
+            val eventSummary = if (todayEvents.isNotEmpty()) {
+                "Today the family had ${todayEvents.size} events including: " + todayEvents.joinToString(", ") { it.title } + "."
+            } else {
+                "You had a peaceful schedule today."
+            }
+            return@withContext "Good evening, $memberName. You completed $completedTasks of $totalTasks tasks. $eventSummary"
         }
 
         // Try Gemini if valid key
@@ -103,7 +108,7 @@ class LegacyAiService {
                     append("Generate a concise, 2-3 sentence personalized morning briefing for $memberName. ")
                     append("Today's schedule: ")
                     todayEvents.forEach { append("${it.startTime} - ${it.title} (${it.memberName}); ") }
-                    append("Mention leave-times if appropriate (e.g. leave 30 min before soccer). Keep it warm, organized and encouraging.")
+                    append("Mention leave-times if appropriate. Keep it warm, organized and encouraging.")
                 }
                 val result = callGeminiApi(prompt)
                 if (!result.isNullOrBlank()) return@withContext result
@@ -112,20 +117,23 @@ class LegacyAiService {
             }
         }
 
-        // High quality intelligent natural language generation
+        // Intelligent dynamic fallback
         val eventCount = todayEvents.size
-        val nextKeyEvents = todayEvents.filter { it.category in listOf("School", "Work", "Sports", "Family") }
-        val nextHighlight = nextKeyEvents.firstOrNull { it.startTime >= "14:00" } ?: todayEvents.getOrNull(2)
+        val firstEvent = todayEvents.firstOrNull()
 
         buildString {
             append("Good morning, $memberName. ")
-            append("You have $eventCount activities scheduled today. ")
-            append("The children need to be at school by 08:00, you have a product meeting at 10:30, ")
-            if (nextHighlight != null) {
-                append("and ${nextHighlight.memberName} has ${nextHighlight.title} at ${nextHighlight.startTime}. ")
-                append("Remember to leave home by 16:30 for soccer practice.")
+            if (eventCount > 0) {
+                append("You have $eventCount activities scheduled today. ")
+                if (firstEvent != null) {
+                    append("First up: \"${firstEvent.title}\" at ${firstEvent.startTime} for ${firstEvent.memberName}. ")
+                }
+                val highlight = todayEvents.find { it.priority.equals("High", ignoreCase = true) } ?: todayEvents.lastOrNull()
+                if (highlight != null && highlight != firstEvent) {
+                    append("Key highlight: \"${highlight.title}\" at ${highlight.startTime}.")
+                }
             } else {
-                append("and family dinner is at 18:30.")
+                append("You have a clear schedule today! Tap '+' to add events or ask me to plan your day.")
             }
         }
     }
@@ -143,35 +151,45 @@ class LegacyAiService {
             val todayEvents = events.filter { it.date == "2026-09-30" }
             val summary = if (todayEvents.isNotEmpty()) {
                 val list = todayEvents.joinToString("\n• ") { "${it.startTime} — ${it.title} (${it.memberName})" }
-                "Here is your family schedule for today:\n• $list\n\nNext up: School pickup at 14:30 and Soccer practice at 17:00."
+                "Here is your family schedule for today:\n• $list"
             } else {
-                "No events are scheduled for today yet. Would you like me to add one?"
+                "No events are scheduled for today yet. Would you like me to add one for you?"
             }
             return@withContext AssistantReply(summary)
         }
 
         // 2. "What's happening tomorrow?"
         if (lower.contains("happening tomorrow") || lower.contains("tomorrow")) {
-            return@withContext AssistantReply(
-                "Tomorrow is fairly busy. Mark has school drop-off at 08:00, you have a client review at 10:00, and Emily has science project review at 17:00."
-            )
+            val tomorrowEvents = events.filter { it.date == "2026-10-01" }
+            val summary = if (tomorrowEvents.isNotEmpty()) {
+                val list = tomorrowEvents.joinToString("\n• ") { "${it.startTime} — ${it.title} (${it.memberName})" }
+                "Tomorrow's schedule:\n• $list"
+            } else {
+                "Tomorrow is currently wide open. What would you like to schedule?"
+            }
+            return@withContext AssistantReply(summary)
         }
 
         // 3. "Who is picking up the children today?"
         if (lower.contains("picking up") || lower.contains("pickup") || lower.contains("pick up")) {
             val pickupEvent = events.find { it.title.contains("Pickup", ignoreCase = true) }
-            val person = pickupEvent?.memberName ?: "Mark (Dad)"
+            val person = pickupEvent?.memberName ?: currentMember.name
             val time = pickupEvent?.startTime ?: "14:30"
             return@withContext AssistantReply(
-                "$person is scheduled for school pickup today at $time at Oakridge Elementary."
+                "$person is scheduled for school pickup at $time."
             )
         }
 
         // 4. "What does the family have planned this weekend?"
         if (lower.contains("weekend") || lower.contains("saturday") || lower.contains("sunday")) {
-            return@withContext AssistantReply(
-                "This Saturday is Grandma Martha's 75th Birthday celebration! The family has birthday lunch planned at 12:30, followed by a park walk."
-            )
+            val weekendEvents = events.filter { it.date in listOf("2026-10-03", "2026-10-04") }
+            val summary = if (weekendEvents.isNotEmpty()) {
+                val list = weekendEvents.joinToString("\n• ") { "${it.date}: ${it.title} (${it.memberName})" }
+                "Family weekend plans:\n• $list"
+            } else {
+                "Your family has a clear weekend ahead! Would you like me to schedule anything?"
+            }
+            return@withContext AssistantReply(summary)
         }
 
         // 5. "Add soccer practice for Daniel every Tuesday at 5pm."

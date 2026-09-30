@@ -27,6 +27,7 @@ fun MemberSwitcherSheet(
     members: List<FamilyMemberEntity>,
     currentMember: FamilyMemberEntity?,
     onSelectMember: (FamilyMemberEntity) -> Unit,
+    onAddNewMember: () -> Unit = {},
     onDismiss: () -> Unit
 ) {
     ModalBottomSheet(
@@ -131,6 +132,22 @@ fun MemberSwitcherSheet(
                         }
                     }
                 }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedButton(
+                onClick = {
+                    onDismiss()
+                    onAddNewMember()
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("sheet_add_member_btn")
+            ) {
+                Icon(imageVector = Icons.Default.PersonAdd, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Add New Family Member")
             }
 
             Spacer(modifier = Modifier.height(24.dp))

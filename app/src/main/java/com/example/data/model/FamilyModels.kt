@@ -20,8 +20,8 @@ enum class AgeCategory {
 @Entity(tableName = "families")
 data class FamilyEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val name: String = "The Williams Family",
-    val inviteCode: String = "WILLIAMS-2026",
+    val name: String = "My Family",
+    val inviteCode: String = "FAM-2026",
     val createdAt: Long = System.currentTimeMillis()
 )
 
@@ -109,7 +109,7 @@ data class ShoppingItemEntity(
     val category: String = "Groceries", // Groceries, Household, School, Pharmacy, Other
     val quantity: String = "1",
     val isPurchased: Boolean = false,
-    val addedByMemberName: String = "Sarah"
+    val addedByMemberName: String = "Family Member"
 )
 
 @Entity(tableName = "announcements")

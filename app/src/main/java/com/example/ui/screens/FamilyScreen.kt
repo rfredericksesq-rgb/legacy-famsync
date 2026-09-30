@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.*
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FamilyScreen(
     family: FamilyEntity?,
@@ -28,12 +30,17 @@ fun FamilyScreen(
     announcements: List<AnnouncementEntity>,
     importantDates: List<ImportantDateEntity>,
     onSelectMember: (FamilyMemberEntity) -> Unit,
-    onInviteMember: (name: String, email: String, role: MemberRole, age: AgeCategory) -> Unit,
+    onAddMember: (name: String, email: String, role: MemberRole, age: AgeCategory, emoji: String, color: String) -> Unit,
+    onUpdateMember: (FamilyMemberEntity) -> Unit,
+    onDeleteMember: (FamilyMemberEntity) -> Unit,
+    onUpdateFamily: (name: String, inviteCode: String) -> Unit,
     onAddAnnouncement: (content: String) -> Unit,
     onReactToAnnouncement: (AnnouncementEntity, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var showInviteDialog by remember { mutableStateOf(false) }
+    var showAddMemberDialog by remember { mutableStateOf(false) }
+    var showEditFamilyDialog by remember { mutableStateOf(false) }
+    var editingMember by remember { mutableStateOf<FamilyMemberEntity?>(null) }
     var showAnnouncementDialog by remember { mutableStateOf(false) }
 
     LazyColumn(
@@ -43,7 +50,7 @@ fun FamilyScreen(
         contentPadding = PaddingValues(top = 12.dp, bottom = 80.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Family Banner
+        // Family Banner with Edit Family button
         item {
             Surface(
                 shape = RoundedCornerShape(20.dp),
@@ -58,27 +65,45 @@ fun FamilyScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = family?.name ?: "My Family",
+                                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = Color.White
+                                )
+                                IconButton(
+                                    onClick = { showEditFamilyDialog = true },
+                                    modifier = Modifier.size(32.dp).testTag("edit_family_button")
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Edit,
+                                        contentDescription = "Edit Family Name",
+                                        tint = Color.White.copy(alpha = 0.85f),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
                             Text(
-                                text = family?.name ?: "The Williams Family",
-                                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                                color = Color.White
-                            )
-                            Text(
-                                text = "Invite Code: ${family?.inviteCode ?: "WILLIAMS-2026"}",
+                                text = "Invite Code: ${family?.inviteCode ?: "LEGACY-SYNC"}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = Color.White.copy(alpha = 0.8f)
                             )
                         }
 
                         Button(
-                            onClick = { showInviteDialog = true },
+                            onClick = { showAddMemberDialog = true },
                             colors = ButtonDefaults.buttonColors(containerColor = Color.White),
-                            modifier = Modifier.testTag("invite_member_button")
+                            modifier = Modifier.testTag("add_member_button")
                         ) {
-                            Icon(imageVector = Icons.Default.PersonAdd, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                            Icon(
+                                imageVector = Icons.Default.PersonAdd,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Invite", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                            Text("Add Member", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -100,6 +125,42 @@ fun FamilyScreen(
                     ),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                TextButton(onClick = { showAddMemberDialog = true }) {
+                    Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Add Member")
+                }
+            }
+        }
+
+        if (members.isEmpty()) {
+            item {
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(text = "👨‍👩‍👧‍👦", fontSize = 40.sp)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "No family members added yet",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                        )
+                        Text(
+                            text = "Add your family members to start synchronizing schedules and tasks.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(onClick = { showAddMemberDialog = true }) {
+                            Text("Add Your First Member")
+                        }
+                    }
+                }
             }
         }
 
@@ -112,7 +173,7 @@ fun FamilyScreen(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
                     .clickable { onSelectMember(member) }
-                    .testTag("member_card_${member.name.lowercase()}")
+                    .testTag("member_card_${member.name.lowercase().replace(" ", "_")}")
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -155,11 +216,13 @@ fun FamilyScreen(
                             }
                         }
 
-                        Text(
-                            text = member.email,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        if (member.email.isNotBlank()) {
+                            Text(
+                                text = member.email,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                         Text(
                             text = when (member.role) {
                                 MemberRole.ADMIN -> "Full administrator permissions"
@@ -171,6 +234,17 @@ fun FamilyScreen(
                             color = MaterialTheme.colorScheme.primary
                         )
                     }
+
+                    IconButton(
+                        onClick = { editingMember = member },
+                        modifier = Modifier.testTag("edit_member_btn_${member.id}")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit Member",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         }
@@ -180,9 +254,7 @@ fun FamilyScreen(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 10.dp)
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
                     text = "FAMILY ANNOUNCEMENTS",
@@ -192,8 +264,11 @@ fun FamilyScreen(
                     ),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+
                 TextButton(onClick = { showAnnouncementDialog = true }) {
-                    Text("+ Post Announcement")
+                    Icon(imageVector = Icons.Default.Campaign, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Post")
                 }
             }
         }
@@ -212,213 +287,349 @@ fun FamilyScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = "📢 ${ann.authorName}",
-                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+                            text = ann.authorName,
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.primary
                         )
                         Text(
                             text = ann.timestamp,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    Text(
-                        text = ann.content,
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ReactionButton(
-                            emoji = "❤️",
-                            count = ann.heartCount,
-                            onClick = { onReactToAnnouncement(ann, "heart") }
-                        )
-                        ReactionButton(
-                            emoji = "👍",
-                            count = ann.thumbsUpCount,
-                            onClick = { onReactToAnnouncement(ann, "thumbsUp") }
-                        )
-                        ReactionButton(
-                            emoji = "✅",
-                            count = ann.checkCount,
-                            onClick = { onReactToAnnouncement(ann, "check") }
-                        )
-                    }
-                }
-            }
-        }
-
-        // Important Dates Section
-        item {
-            Text(
-                text = "IMPORTANT DATES & BIRTHDAYS",
-                style = MaterialTheme.typography.labelLarge.copy(
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
-                ),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 10.dp)
-            )
-        }
-
-        items(importantDates) { date ->
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 1.dp,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .background(MaterialTheme.colorScheme.secondaryContainer, CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Cake,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.secondary
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(14.dp))
-
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = date.title,
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = "Date: ${date.date} • ${date.memberName}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                }
-            }
-        }
-    }
-
-    if (showInviteDialog) {
-        InviteMemberDialog(
-            onDismiss = { showInviteDialog = false },
-            onConfirm = { name, email, role, age ->
-                onInviteMember(name, email, role, age)
-                showInviteDialog = false
-            }
-        )
-    }
-
-    if (showAnnouncementDialog) {
-        AddAnnouncementDialog(
-            onDismiss = { showAnnouncementDialog = false },
-            onConfirm = { text ->
-                onAddAnnouncement(text)
-                showAnnouncementDialog = false
-            }
-        )
-    }
-}
-
-@Composable
-fun InviteMemberDialog(
-    onDismiss: () -> Unit,
-    onConfirm: (name: String, email: String, role: MemberRole, age: AgeCategory) -> Unit
-) {
-    var name by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var selectedRole by remember { mutableStateOf(MemberRole.ADULT) }
-    var selectedAge by remember { mutableStateOf(AgeCategory.ADULT) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Invite Family Member") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Name *") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = email,
-                    onValueChange = { email = it },
-                    label = { Text("Email or Phone *") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Text("Role", style = MaterialTheme.typography.labelMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    MemberRole.values().forEach { r ->
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(text = ann.content, style = MaterialTheme.typography.bodyMedium)
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         FilterChip(
-                            selected = selectedRole == r,
-                            onClick = { selectedRole = r },
-                            label = { Text(r.name) }
+                            selected = false,
+                            onClick = { onReactToAnnouncement(ann, "heart") },
+                            label = { Text("❤️ ${ann.heartCount}") }
+                        )
+                        FilterChip(
+                            selected = false,
+                            onClick = { onReactToAnnouncement(ann, "thumbsUp") },
+                            label = { Text("👍 ${ann.thumbsUpCount}") }
+                        )
+                        FilterChip(
+                            selected = false,
+                            onClick = { onReactToAnnouncement(ann, "check") },
+                            label = { Text("✅ ${ann.checkCount}") }
                         )
                     }
                 }
             }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    if (name.isNotBlank()) {
-                        onConfirm(name, email, selectedRole, selectedAge)
+        }
+    }
+
+    // Dialog: Edit Family Name & Code
+    if (showEditFamilyDialog) {
+        var familyName by remember { mutableStateOf(family?.name ?: "My Family") }
+        var inviteCode by remember { mutableStateOf(family?.inviteCode ?: "LEGACY-SYNC") }
+
+        AlertDialog(
+            onDismissRequest = { showEditFamilyDialog = false },
+            title = { Text("Edit Family Details") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(
+                        value = familyName,
+                        onValueChange = { familyName = it },
+                        label = { Text("Family Name") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = inviteCode,
+                        onValueChange = { inviteCode = it },
+                        label = { Text("Family Invite Code") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (familyName.isNotBlank()) {
+                            onUpdateFamily(familyName.trim(), inviteCode.trim())
+                            showEditFamilyDialog = false
+                        }
+                    }
+                ) {
+                    Text("Save Changes")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditFamilyDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Dialog: Add Member
+    if (showAddMemberDialog) {
+        var name by remember { mutableStateOf("") }
+        var email by remember { mutableStateOf("") }
+        var role by remember { mutableStateOf(MemberRole.ADULT) }
+        var ageCategory by remember { mutableStateOf(AgeCategory.ADULT) }
+        var selectedEmoji by remember { mutableStateOf("🧑") }
+        val emojis = listOf("👑", "👩", "👨", "👧", "👦", "👵", "👴", "🧑", "👶", "🐕", "🐱")
+
+        AlertDialog(
+            onDismissRequest = { showAddMemberDialog = false },
+            title = { Text("Add Family Member") },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text("Full Name *") },
+                        modifier = Modifier.fillMaxWidth().testTag("new_member_name_input")
+                    )
+
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = { email = it },
+                        label = { Text("Email (Optional)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Text("Avatar Icon", style = MaterialTheme.typography.labelMedium)
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(emojis) { emoji ->
+                            Surface(
+                                shape = CircleShape,
+                                color = if (selectedEmoji == emoji) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clickable { selectedEmoji = emoji }
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(text = emoji, fontSize = 20.sp)
+                                }
+                            }
+                        }
+                    }
+
+                    Text("Family Role", style = MaterialTheme.typography.labelMedium)
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        MemberRole.values().forEach { r ->
+                            FilterChip(
+                                selected = role == r,
+                                onClick = { role = r },
+                                label = { Text(r.name, fontSize = 11.sp) }
+                            )
+                        }
+                    }
+
+                    Text("Age Category", style = MaterialTheme.typography.labelMedium)
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        AgeCategory.values().forEach { a ->
+                            FilterChip(
+                                selected = ageCategory == a,
+                                onClick = { ageCategory = a },
+                                label = { Text(a.name, fontSize = 11.sp) }
+                            )
+                        }
                     }
                 }
-            ) {
-                Text("Send Invite")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (name.isNotBlank()) {
+                            onAddMember(
+                                name.trim(),
+                                email.trim(),
+                                role,
+                                ageCategory,
+                                selectedEmoji,
+                                "#2563EB"
+                            )
+                            showAddMemberDialog = false
+                        }
+                    },
+                    modifier = Modifier.testTag("confirm_add_member_btn")
+                ) {
+                    Text("Add Member")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddMemberDialog = false }) {
+                    Text("Cancel")
+                }
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        }
-    )
-}
+        )
+    }
 
-@Composable
-fun AddAnnouncementDialog(
-    onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit
-) {
-    var text by remember { mutableStateOf("") }
+    // Dialog: Edit Existing Member
+    editingMember?.let { member ->
+        var name by remember(member) { mutableStateOf(member.name) }
+        var email by remember(member) { mutableStateOf(member.email) }
+        var role by remember(member) { mutableStateOf(member.role) }
+        var ageCategory by remember(member) { mutableStateOf(member.ageCategory) }
+        var selectedEmoji by remember(member) { mutableStateOf(member.avatarEmoji) }
+        var showDeleteConfirm by remember { mutableStateOf(false) }
+        val emojis = listOf("👑", "👩", "👨", "👧", "👦", "👵", "👴", "🧑", "👶", "🐕", "🐱")
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Post Family Announcement") },
-        text = {
-            OutlinedTextField(
-                value = text,
-                onValueChange = { text = it },
-                label = { Text("Announcement message (e.g. Dinner is at 19:00)") },
-                minLines = 3,
-                maxLines = 5,
-                modifier = Modifier.fillMaxWidth()
+        if (showDeleteConfirm) {
+            AlertDialog(
+                onDismissRequest = { showDeleteConfirm = false },
+                title = { Text("Delete ${member.name}?") },
+                text = { Text("Are you sure you want to remove this family member from your household?") },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            onDeleteMember(member)
+                            showDeleteConfirm = false
+                            editingMember = null
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text("Delete Member")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+                }
             )
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    if (text.isNotBlank()) {
-                        onConfirm(text)
+        } else {
+            AlertDialog(
+                onDismissRequest = { editingMember = null },
+                title = { Text("Edit Family Member") },
+                text = {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = name,
+                            onValueChange = { name = it },
+                            label = { Text("Name *") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        OutlinedTextField(
+                            value = email,
+                            onValueChange = { email = it },
+                            label = { Text("Email") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Text("Avatar Icon", style = MaterialTheme.typography.labelMedium)
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(emojis) { emoji ->
+                                Surface(
+                                    shape = CircleShape,
+                                    color = if (selectedEmoji == emoji) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clickable { selectedEmoji = emoji }
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text(text = emoji, fontSize = 20.sp)
+                                    }
+                                }
+                            }
+                        }
+
+                        Text("Role", style = MaterialTheme.typography.labelMedium)
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            MemberRole.values().forEach { r ->
+                                FilterChip(
+                                    selected = role == r,
+                                    onClick = { role = r },
+                                    label = { Text(r.name, fontSize = 11.sp) }
+                                )
+                            }
+                        }
+
+                        Text("Age Category", style = MaterialTheme.typography.labelMedium)
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            AgeCategory.values().forEach { a ->
+                                FilterChip(
+                                    selected = ageCategory == a,
+                                    onClick = { ageCategory = a },
+                                    label = { Text(a.name, fontSize = 11.sp) }
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(4.dp))
+                        TextButton(
+                            onClick = { showDeleteConfirm = true },
+                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                        ) {
+                            Icon(imageVector = Icons.Default.Delete, contentDescription = null)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Remove Member from Family")
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            if (name.isNotBlank()) {
+                                onUpdateMember(
+                                    member.copy(
+                                        name = name.trim(),
+                                        email = email.trim(),
+                                        role = role,
+                                        ageCategory = ageCategory,
+                                        avatarEmoji = selectedEmoji
+                                    )
+                                )
+                                editingMember = null
+                            }
+                        }
+                    ) {
+                        Text("Save Changes")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { editingMember = null }) {
+                        Text("Cancel")
                     }
                 }
-            ) {
-                Text("Broadcast")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            )
         }
-    )
+    }
+
+    // Dialog: Post Announcement
+    if (showAnnouncementDialog) {
+        var content by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showAnnouncementDialog = false },
+            title = { Text("Broadcast Family Announcement") },
+            text = {
+                OutlinedTextField(
+                    value = content,
+                    onValueChange = { content = it },
+                    label = { Text("Announcement message") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (content.isNotBlank()) {
+                            onAddAnnouncement(content.trim())
+                            showAnnouncementDialog = false
+                        }
+                    }
+                ) {
+                    Text("Broadcast")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAnnouncementDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }

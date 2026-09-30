@@ -17,8 +17,26 @@ interface FamilyDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertFamily(family: FamilyEntity): Long
 
+    @Update
+    suspend fun updateFamily(family: FamilyEntity)
+
     @Query("SELECT * FROM family_members WHERE familyId = :familyId")
     fun getFamilyMembers(familyId: Int): Flow<List<FamilyMemberEntity>>
+
+    @Query("SELECT * FROM family_members WHERE familyId = :familyId")
+    suspend fun getMembersOnce(familyId: Int): List<FamilyMemberEntity>
+
+    @Query("DELETE FROM family_members WHERE name IN (:names)")
+    suspend fun deleteMembersByNames(names: List<String>)
+
+    @Query("DELETE FROM family_events WHERE memberName IN (:names)")
+    suspend fun deleteEventsByMemberNames(names: List<String>)
+
+    @Query("DELETE FROM family_tasks WHERE assignedMemberName IN (:names)")
+    suspend fun deleteTasksByMemberNames(names: List<String>)
+
+    @Query("UPDATE families SET name = 'My Family', inviteCode = 'LEGACY-SYNC' WHERE name = 'The Williams Family'")
+    suspend fun sanitizeLegacyFamilyName()
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertMember(member: FamilyMemberEntity): Long
@@ -26,8 +44,32 @@ interface FamilyDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertMembers(members: List<FamilyMemberEntity>)
 
+    @Update
+    suspend fun updateMember(member: FamilyMemberEntity)
+
     @Delete
     suspend fun deleteMember(member: FamilyMemberEntity)
+
+    @Query("DELETE FROM family_members WHERE id = :id")
+    suspend fun deleteMemberById(id: Int)
+
+    @Query("DELETE FROM family_members")
+    suspend fun deleteAllMembers()
+
+    @Query("DELETE FROM family_events")
+    suspend fun deleteAllEvents()
+
+    @Query("DELETE FROM family_tasks")
+    suspend fun deleteAllTasks()
+
+    @Query("DELETE FROM family_alarms")
+    suspend fun deleteAllAlarms()
+
+    @Query("DELETE FROM diary_entries")
+    suspend fun deleteAllDiaryEntries()
+
+    @Query("DELETE FROM shopping_items")
+    suspend fun deleteAllShoppingItems()
 
     // Events
     @Query("SELECT * FROM family_events WHERE familyId = :familyId ORDER BY date ASC, startTime ASC")

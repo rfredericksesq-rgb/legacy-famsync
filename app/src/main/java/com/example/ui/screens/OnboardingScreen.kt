@@ -22,18 +22,21 @@ import com.example.R
 
 @Composable
 fun OnboardingScreen(
-    onFinish: () -> Unit,
+    currentName: String = "",
+    currentEmail: String = "",
+    currentFamilyName: String = "",
+    onFinish: (userName: String, userEmail: String, familyName: String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var step by remember { mutableStateOf(1) }
 
-    var accountName by remember { mutableStateOf("Sarah Williams") }
-    var accountEmail by remember { mutableStateOf("sarah.williams@legacy.com") }
+    var accountName by remember { mutableStateOf(currentName.takeIf { it != "Family Admin" } ?: "") }
+    var accountEmail by remember { mutableStateOf(currentEmail) }
     var accountPassword by remember { mutableStateOf("••••••••") }
 
-    var familyName by remember { mutableStateOf("The Williams Family") }
+    var familyName by remember { mutableStateOf(currentFamilyName.ifBlank { "My Family" }) }
 
-    var inviteEmail by remember { mutableStateOf("mark.williams@legacy.com") }
+    var inviteEmail by remember { mutableStateOf("") }
 
     var prefMorningBriefing by remember { mutableStateOf(true) }
     var prefEveningSummary by remember { mutableStateOf(true) }
@@ -187,7 +190,7 @@ fun OnboardingScreen(
                             OutlinedTextField(
                                 value = familyName,
                                 onValueChange = { familyName = it },
-                                label = { Text("Family Name (e.g. The Williams Family)") },
+                                label = { Text("Family Name (e.g. My Family)") },
                                 singleLine = true,
                                 modifier = Modifier.fillMaxWidth()
                             )
@@ -241,16 +244,15 @@ fun OnboardingScreen(
                             Spacer(modifier = Modifier.height(16.dp))
 
                             Text(
-                                text = "Suggested Members:",
+                                text = "Family Member Roles:",
                                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
                             )
 
                             Spacer(modifier = Modifier.height(8.dp))
 
-                            Text("👨 Dad (Mark) • Adult Member", style = MaterialTheme.typography.bodySmall)
-                            Text("👦 Daniel • Child", style = MaterialTheme.typography.bodySmall)
-                            Text("👧 Emily • Child", style = MaterialTheme.typography.bodySmall)
-                            Text("👵 Grandma Martha • Guest", style = MaterialTheme.typography.bodySmall)
+                            Text("👨 Spouse / Partner • Adult Member (Co-Admin)", style = MaterialTheme.typography.bodySmall)
+                            Text("👦 Children & Teens • Chores & Activity Schedules", style = MaterialTheme.typography.bodySmall)
+                            Text("👵 Extended Family & Caregivers • Shared Events Access", style = MaterialTheme.typography.bodySmall)
                         }
                     }
                     5 -> {
@@ -319,7 +321,9 @@ fun OnboardingScreen(
                     }
                 } else {
                     Button(
-                        onClick = onFinish,
+                        onClick = {
+                            onFinish(accountName, accountEmail, familyName)
+                        },
                         modifier = Modifier.testTag("onboarding_finish_button")
                     ) {
                         Text("Enter Legacy")

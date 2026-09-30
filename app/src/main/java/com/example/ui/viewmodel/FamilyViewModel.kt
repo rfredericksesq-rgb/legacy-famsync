@@ -80,7 +80,7 @@ class FamilyViewModel(application: Application) : AndroidViewModel(application) 
     val currentMember: StateFlow<FamilyMemberEntity?> = _currentMember.asStateFlow()
 
     // AI Daily Briefing
-    private val _aiBriefing = MutableStateFlow<String>("Good morning, Sarah. You have 4 activities today. The children need to be at school by 08:00, you have a meeting at 10:30, and Daniel has soccer practice at 17:00. Remember to leave home by 16:30.")
+    private val _aiBriefing = MutableStateFlow<String>("Welcome to FamSync! You can add your family schedule, assign chores, and manage reminders.")
     val aiBriefing: StateFlow<String> = _aiBriefing.asStateFlow()
 
     private val _isEveningBriefing = MutableStateFlow(false)
@@ -109,21 +109,65 @@ class FamilyViewModel(application: Application) : AndroidViewModel(application) 
     val pendingActionPrompt: StateFlow<String?> = _pendingActionPrompt.asStateFlow()
 
     init {
-        // Auto-select first member when loaded
+        // Immediately purge any legacy default users and ensure clean editable family
+        viewModelScope.launch {
+            val initialUser = auth.currentUser
+            val initialName = initialUser?.displayName?.takeIf { it.isNotBlank() }
+                ?: initialUser?.email?.substringBefore("@")?.replaceFirstChar { it.uppercase() }
+                ?: "Family Admin"
+            repository.purgeDefaultUsersAndEnsureClean(
+                defaultAdminName = initialName,
+                defaultEmail = initialUser?.email ?: ""
+            )
+        }
+
+        // Observe members: keep _currentMember in sync and guard against default users
         viewModelScope.launch {
             members.collect { memberList ->
-                if (_currentMember.value == null && memberList.isNotEmpty()) {
-                    _currentMember.value = memberList.first()
-                    refreshAiBriefing()
+                val hasDefaultUsers = memberList.any { it.name in listOf("Sarah", "Mark", "Daniel", "Emily", "Grandma Martha") }
+                if (hasDefaultUsers) {
+                    val user = auth.currentUser
+                    val name = user?.displayName ?: "Family Admin"
+                    repository.purgeDefaultUsersAndEnsureClean(name, user?.email ?: "")
+                } else if (memberList.isEmpty()) {
+                    val user = auth.currentUser
+                    val name = user?.displayName ?: "Family Admin"
+                    repository.ensurePrimaryMember(name, user?.email ?: "")
+                } else {
+                    if (_currentMember.value == null) {
+                        _currentMember.value = memberList.first()
+                        refreshAiBriefing()
+                    } else {
+                        val updatedCurrent = memberList.find { it.id == _currentMember.value?.id }
+                        if (updatedCurrent != null) {
+                            _currentMember.value = updatedCurrent
+                        } else {
+                            _currentMember.value = memberList.firstOrNull()
+                            refreshAiBriefing()
+                        }
+                    }
                 }
             }
         }
 
-        // Sync and listen to user profile in Firestore
+        // Initialize user-owned family and observe cloud profile if authenticated
         viewModelScope.launch {
             currentUser.collect { user ->
                 if (user != null) {
                     val uid = user.uid
+                    val userName = user.displayName?.takeIf { it.isNotBlank() }
+                        ?: user.email?.substringBefore("@")?.replaceFirstChar { it.uppercase() }
+                        ?: "Family Admin"
+                    val userEmail = user.email ?: ""
+
+                    // If primary member has generic placeholder, update with authenticated user's name
+                    val currentAdmin = members.value.find { it.role == MemberRole.ADMIN } ?: _currentMember.value
+                    if (currentAdmin != null && (currentAdmin.name == "Family Admin" || currentAdmin.name == "Primary Member")) {
+                        val updated = currentAdmin.copy(name = userName, email = userEmail)
+                        repository.updateMember(updated)
+                        _currentMember.value = updated
+                    }
+
                     launch {
                         firestoreRepo.observeUserProfile(uid).collect { profile ->
                             _userProfile.value = profile
@@ -150,13 +194,14 @@ class FamilyViewModel(application: Application) : AndroidViewModel(application) 
                 _authLoading.value = false
                 val firebaseUser = result.user
                 if (firebaseUser != null) {
+                    val name = firebaseUser.displayName ?: "Family Admin"
                     viewModelScope.launch {
                         firestoreRepo.saveUserProfile(
                             userId = firebaseUser.uid,
-                            displayName = firebaseUser.displayName ?: "Sarah Williams",
+                            displayName = name,
                             email = firebaseUser.email ?: "",
                             role = "Family Administrator",
-                            familyId = "williams_family",
+                            familyId = "my_family",
                             avatarEmoji = "👑"
                         )
                     }
@@ -319,7 +364,111 @@ class FamilyViewModel(application: Application) : AndroidViewModel(application) 
         )
     }
 
-    // CRUD Actions with Dual Room & Firestore Persistence
+    // --- USER-EDITABLE FAMILY & MEMBER MANAGEMENT ---
+    fun updateFamily(name: String, inviteCode: String) {
+        viewModelScope.launch {
+            val current = family.value ?: FamilyEntity(id = 1)
+            repository.updateFamily(current.copy(name = name, inviteCode = inviteCode))
+        }
+    }
+
+    fun addMember(
+        name: String,
+        email: String,
+        role: MemberRole,
+        ageCategory: AgeCategory,
+        avatarEmoji: String,
+        colorHex: String
+    ) {
+        viewModelScope.launch {
+            val entity = FamilyMemberEntity(
+                familyId = 1,
+                name = name,
+                role = role,
+                ageCategory = ageCategory,
+                avatarEmoji = avatarEmoji,
+                colorHex = colorHex,
+                email = email
+            )
+            repository.insertMember(entity)
+            if (_currentMember.value == null) {
+                _currentMember.value = entity
+            }
+            refreshAiBriefing()
+        }
+    }
+
+    fun updateCurrentMember(
+        name: String,
+        email: String,
+        role: MemberRole = MemberRole.ADMIN,
+        ageCategory: AgeCategory = AgeCategory.ADULT,
+        avatarEmoji: String = "👑"
+    ) {
+        val current = _currentMember.value ?: return
+        val updated = current.copy(
+            name = name.trim(),
+            email = email.trim(),
+            role = role,
+            ageCategory = ageCategory,
+            avatarEmoji = avatarEmoji
+        )
+        updateMember(updated)
+    }
+
+    fun setupUserFamily(userName: String, userEmail: String, familyName: String) {
+        viewModelScope.launch {
+            if (familyName.isNotBlank()) {
+                val currentFam = family.value ?: FamilyEntity(id = 1)
+                repository.updateFamily(currentFam.copy(name = familyName.trim()))
+            }
+            val current = _currentMember.value ?: members.value.firstOrNull()
+            if (current != null) {
+                val updated = current.copy(
+                    name = if (userName.isNotBlank()) userName.trim() else current.name,
+                    email = if (userEmail.isNotBlank()) userEmail.trim() else current.email
+                )
+                repository.updateMember(updated)
+                _currentMember.value = updated
+            } else {
+                val newMember = FamilyMemberEntity(
+                    id = 1,
+                    familyId = 1,
+                    name = if (userName.isNotBlank()) userName.trim() else "Family Admin",
+                    role = MemberRole.ADMIN,
+                    ageCategory = AgeCategory.ADULT,
+                    avatarEmoji = "👑",
+                    colorHex = "#2563EB",
+                    email = userEmail.trim()
+                )
+                repository.insertMember(newMember)
+                _currentMember.value = newMember
+            }
+            refreshAiBriefing()
+        }
+    }
+
+    fun updateMember(member: FamilyMemberEntity) {
+        viewModelScope.launch {
+            repository.updateMember(member)
+            if (_currentMember.value?.id == member.id) {
+                _currentMember.value = member
+            }
+            refreshAiBriefing()
+        }
+    }
+
+    fun deleteMember(member: FamilyMemberEntity) {
+        viewModelScope.launch {
+            repository.deleteMember(member)
+            if (_currentMember.value?.id == member.id) {
+                _currentMember.value = members.value.find { it.id != member.id }
+            }
+            refreshAiBriefing()
+        }
+    }
+
+    // --- USER-EDITABLE CRUD ACTIONS ---
     fun addEvent(
         title: String,
         memberName: String,
@@ -355,19 +504,18 @@ class FamilyViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun deleteEvent(event: FamilyEventEntity) {
+    fun updateEvent(event: FamilyEventEntity) {
         viewModelScope.launch {
-            repository.deleteEvent(event)
-            firestoreRepo.deleteEvent("event_${event.id}", currentUserId())
+            repository.updateEvent(event)
+            firestoreRepo.saveEvent(event, currentUserId())
             refreshAiBriefing()
         }
     }
 
-    fun toggleTask(task: FamilyTaskEntity) {
+    fun deleteEvent(event: FamilyEventEntity) {
         viewModelScope.launch {
-            val updated = task.copy(isCompleted = !task.isCompleted)
-            repository.updateTask(updated)
-            firestoreRepo.saveTask(updated, currentUserId())
+            repository.deleteEvent(event)
+            firestoreRepo.deleteEvent("event_${event.id}", currentUserId())
             refreshAiBriefing()
         }
     }
@@ -400,19 +548,28 @@ class FamilyViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun toggleTask(task: FamilyTaskEntity) {
+        viewModelScope.launch {
+            val updated = task.copy(isCompleted = !task.isCompleted)
+            repository.updateTask(updated)
+            firestoreRepo.saveTask(updated, currentUserId())
+            refreshAiBriefing()
+        }
+    }
+
+    fun updateTask(task: FamilyTaskEntity) {
+        viewModelScope.launch {
+            repository.updateTask(task)
+            firestoreRepo.saveTask(task, currentUserId())
+            refreshAiBriefing()
+        }
+    }
+
     fun deleteTask(task: FamilyTaskEntity) {
         viewModelScope.launch {
             repository.deleteTask(task)
             firestoreRepo.deleteTask("task_${task.id}", currentUserId())
             refreshAiBriefing()
-        }
-    }
-
-    fun toggleAlarm(alarm: FamilyAlarmEntity) {
-        viewModelScope.launch {
-            val updated = alarm.copy(isEnabled = !alarm.isEnabled)
-            repository.updateAlarm(updated)
-            firestoreRepo.saveAlarm(updated, currentUserId())
         }
     }
 
@@ -428,6 +585,21 @@ class FamilyViewModel(application: Application) : AndroidViewModel(application) 
             )
             repository.insertAlarm(entity)
             firestoreRepo.saveAlarm(entity, currentUserId())
+        }
+    }
+
+    fun toggleAlarm(alarm: FamilyAlarmEntity) {
+        viewModelScope.launch {
+            val updated = alarm.copy(isEnabled = !alarm.isEnabled)
+            repository.updateAlarm(updated)
+            firestoreRepo.saveAlarm(updated, currentUserId())
+        }
+    }
+
+    fun updateAlarm(alarm: FamilyAlarmEntity) {
+        viewModelScope.launch {
+            repository.updateAlarm(alarm)
+            firestoreRepo.saveAlarm(alarm, currentUserId())
         }
     }
 
@@ -450,10 +622,17 @@ class FamilyViewModel(application: Application) : AndroidViewModel(application) 
                 text = text,
                 milestone = milestone,
                 isPrivate = isPrivate,
-                likesCount = 1
+                likesCount = 0
             )
             repository.insertDiaryEntry(entity)
             firestoreRepo.saveDiaryEntry(entity, currentUserId())
+        }
+    }
+
+    fun updateDiaryEntry(entry: DiaryEntryEntity) {
+        viewModelScope.launch {
+            repository.updateDiaryEntry(entry)
+            firestoreRepo.saveDiaryEntry(entry, currentUserId())
         }
     }
 
@@ -473,16 +652,24 @@ class FamilyViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun addShoppingItem(name: String, category: String, quantity: String) {
+        val memberName = _currentMember.value?.name ?: "Family Admin"
         viewModelScope.launch {
             val entity = ShoppingItemEntity(
                 familyId = 1,
                 name = name,
                 category = category,
                 quantity = quantity,
-                addedByMemberName = _currentMember.value?.name ?: "Sarah"
+                addedByMemberName = memberName
             )
             repository.insertShoppingItem(entity)
             firestoreRepo.saveShoppingItem(entity, currentUserId())
+        }
+    }
+
+    fun updateShoppingItem(item: ShoppingItemEntity) {
+        viewModelScope.launch {
+            repository.updateShoppingItem(item)
+            firestoreRepo.saveShoppingItem(item, currentUserId())
         }
     }
 
@@ -494,6 +681,13 @@ class FamilyViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun deleteShoppingItem(item: ShoppingItemEntity) {
+        viewModelScope.launch {
+            repository.deleteShoppingItem(item)
+            firestoreRepo.deleteShoppingItem("shop_${item.id}", currentUserId())
+        }
+    }
+
     fun clearPurchasedShopping() {
         viewModelScope.launch {
             repository.clearPurchasedShopping(1)
@@ -501,7 +695,7 @@ class FamilyViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun addAnnouncement(content: String) {
-        val author = _currentMember.value?.name ?: "Sarah"
+        val author = _currentMember.value?.name ?: "Family Admin"
         viewModelScope.launch {
             repository.insertAnnouncement(
                 AnnouncementEntity(
@@ -544,22 +738,6 @@ class FamilyViewModel(application: Application) : AndroidViewModel(application) 
     fun clearAllNotifications() {
         viewModelScope.launch {
             repository.clearAllNotifications(1)
-        }
-    }
-
-    fun inviteMember(name: String, email: String, role: MemberRole, ageCategory: AgeCategory) {
-        viewModelScope.launch {
-            repository.insertMember(
-                FamilyMemberEntity(
-                    familyId = 1,
-                    name = name,
-                    role = role,
-                    ageCategory = ageCategory,
-                    avatarEmoji = if (role == MemberRole.CHILD) "🧒" else "🧑",
-                    colorHex = "#3B82F6",
-                    email = email
-                )
-            )
         }
     }
 }
