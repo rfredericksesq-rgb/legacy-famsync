@@ -253,7 +253,7 @@ fun AddDiaryEntryDialog(
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("Memory Title (e.g. Daniel's First Goal) *") },
+                    label = { Text("Memory Title (e.g. Family Milestone) *") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )

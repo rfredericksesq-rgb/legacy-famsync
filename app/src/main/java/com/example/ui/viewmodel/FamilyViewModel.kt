@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.R
 import com.example.data.ai.AssistantAction
 import com.example.data.ai.LegacyAiService
+import com.example.data.calendar.GoogleCalendarService
 import com.example.data.firebase.FirestoreFamilyRepository
 import com.example.data.local.AppDatabase
 import com.example.data.model.*
@@ -43,6 +44,16 @@ class FamilyViewModel(application: Application) : AndroidViewModel(application) 
     private val database = AppDatabase.getDatabase(application, viewModelScope)
     private val repository = FamilyRepository(database.familyDao())
     private val aiService = LegacyAiService()
+    private val googleCalendarService = GoogleCalendarService(application)
+
+    private val _isImportingCalendar = MutableStateFlow(false)
+    val isImportingCalendar: StateFlow<Boolean> = _isImportingCalendar.asStateFlow()
+
+    private val _calendarImportPreview = MutableStateFlow<List<GoogleCalendarImportItem>>(emptyList())
+    val calendarImportPreview: StateFlow<List<GoogleCalendarImportItem>> = _calendarImportPreview.asStateFlow()
+
+    private val _calendarImportStatus = MutableStateFlow<String?>(null)
+    val calendarImportStatus: StateFlow<String?> = _calendarImportStatus.asStateFlow()
 
     private val databaseId: String = application.getString(R.string.firestore_database_id)
     private val firestoreRepo = FirestoreFamilyRepository(databaseId)
@@ -516,6 +527,91 @@ class FamilyViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             repository.deleteEvent(event)
             firestoreRepo.deleteEvent("event_${event.id}", currentUserId())
+            refreshAiBriefing()
+        }
+    }
+
+    // Google Calendar Sync & Import
+    fun hasCalendarPermission(): Boolean = googleCalendarService.hasCalendarPermission()
+
+    fun loadGoogleCalendarEventsForImport(daysAhead: Int = 30) {
+        viewModelScope.launch {
+            _isImportingCalendar.value = true
+            _calendarImportStatus.value = "Fetching Google Calendar events..."
+            try {
+                // Try reading from device Google Calendar provider first
+                var items = googleCalendarService.fetchDeviceCalendarEvents(daysAhead)
+                // If device provider has no events (e.g. clean emulator), fallback to connected cloud account
+                if (items.isEmpty()) {
+                    val userEmail = currentUser.value?.email ?: _currentMember.value?.email
+                    items = googleCalendarService.getCloudGoogleCalendarEvents(userEmail)
+                }
+                _calendarImportPreview.value = items
+                _calendarImportStatus.value = "Found ${items.size} Google Calendar event(s)"
+            } catch (e: Exception) {
+                Log.e("FamilyViewModel", "Failed to fetch calendar events", e)
+                _calendarImportStatus.value = "Could not fetch events: ${e.localizedMessage}"
+            } finally {
+                _isImportingCalendar.value = false
+            }
+        }
+    }
+
+    fun toggleImportItemSelection(id: String) {
+        _calendarImportPreview.value = _calendarImportPreview.value.map { item ->
+            if (item.id == id) item.copy(isSelected = !item.isSelected) else item
+        }
+    }
+
+    fun setAllImportItemsSelected(selected: Boolean) {
+        _calendarImportPreview.value = _calendarImportPreview.value.map { item ->
+            item.copy(isSelected = selected)
+        }
+    }
+
+    fun importGoogleCalendarEvents(
+        targetMemberId: Int,
+        targetMemberName: String,
+        overrideCategory: String? = null,
+        onSuccess: (count: Int) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            _isImportingCalendar.value = true
+            _calendarImportStatus.value = "Importing into unified family schedule..."
+            try {
+                val selected = _calendarImportPreview.value.filter { it.isSelected }
+                if (selected.isNotEmpty()) {
+                    val entities = googleCalendarService.convertToFamilyEvents(
+                        items = selected,
+                        targetMemberId = targetMemberId,
+                        targetMemberName = targetMemberName,
+                        overrideCategory = overrideCategory
+                    )
+                    repository.insertEvents(entities)
+
+                    val uid = currentUserId()
+                    entities.forEach { event ->
+                        firestoreRepo.saveEvent(event, uid)
+                    }
+
+                    refreshAiBriefing()
+                    _calendarImportStatus.value = "Successfully imported ${selected.size} event(s)!"
+                    onSuccess(selected.size)
+                } else {
+                    _calendarImportStatus.value = "No events were selected for import."
+                }
+            } catch (e: Exception) {
+                Log.e("FamilyViewModel", "Import failed", e)
+                _calendarImportStatus.value = "Import failed: ${e.localizedMessage}"
+            } finally {
+                _isImportingCalendar.value = false
+            }
+        }
+    }
+
+    fun clearGoogleCalendarEvents() {
+        viewModelScope.launch {
+            repository.clearGoogleCalendarEvents()
             refreshAiBriefing()
         }
     }

@@ -64,12 +64,12 @@ fun AssistantScreen(
 
     val suggestionChips = listOf(
         "What's happening today?",
-        "Who is picking up the children today?",
-        "Add soccer practice for Daniel every Tuesday at 5pm",
-        "Remind everyone that Grandma's birthday is Saturday",
+        "Who is picking up the kids today?",
+        "Add soccer practice every Tuesday at 5pm",
+        "Remind everyone about family dinner this weekend",
         "Set an alarm for 6:30 tomorrow morning",
         "What does the family have planned this weekend?",
-        "Add dinner with Grandma at 7pm Friday",
+        "Add family dinner at 7pm Friday",
         "Remind the whole family to bring their passports tomorrow"
     )
 

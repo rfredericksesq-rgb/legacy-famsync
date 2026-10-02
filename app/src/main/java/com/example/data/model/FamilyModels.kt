@@ -55,7 +55,22 @@ data class FamilyEventEntity(
     val priority: String = "Normal", // Low, Normal, High
     val isPrivate: Boolean = false,
     val reminderMinutes: Int = 15,
-    val recurrence: String = "None" // None, Daily, Weekly, Weekdays, Monthly
+    val recurrence: String = "None", // None, Daily, Weekly, Weekdays, Monthly
+    val isGoogleCalendarImport: Boolean = false,
+    val sourceCalendar: String = ""
+)
+
+data class GoogleCalendarImportItem(
+    val id: String,
+    val title: String,
+    val date: String, // YYYY-MM-DD
+    val startTime: String, // HH:mm
+    val endTime: String, // HH:mm
+    val location: String = "",
+    val description: String = "",
+    val calendarName: String = "Google Calendar",
+    val suggestedCategory: String = "Family",
+    val isSelected: Boolean = true
 )
 
 @Entity(tableName = "family_tasks")

@@ -95,6 +95,10 @@ fun MainAppScreen(viewModel: FamilyViewModel) {
     val pendingAction by viewModel.pendingAction.collectAsStateWithLifecycle()
     val pendingActionPrompt by viewModel.pendingActionPrompt.collectAsStateWithLifecycle()
 
+    val isImportingCalendar by viewModel.isImportingCalendar.collectAsStateWithLifecycle()
+    val calendarImportPreview by viewModel.calendarImportPreview.collectAsStateWithLifecycle()
+    val calendarImportStatus by viewModel.calendarImportStatus.collectAsStateWithLifecycle()
+
     val unreadNotifications = remember(notifications) { notifications.count { !it.isRead } }
 
     // Handle Android system back gesture to return to Today tab
@@ -231,9 +235,22 @@ fun MainAppScreen(viewModel: FamilyViewModel) {
                             CalendarScreen(
                                 events = events,
                                 members = members,
+                                currentMember = currentMember,
+                                userEmail = viewModel.currentUser.value?.email,
+                                isImportingCalendar = isImportingCalendar,
+                                calendarImportPreview = calendarImportPreview,
+                                calendarImportStatus = calendarImportStatus,
+                                onLoadGoogleCalendarEvents = { viewModel.loadGoogleCalendarEventsForImport() },
+                                onToggleImportItemSelection = { viewModel.toggleImportItemSelection(it) },
+                                onSetAllImportItemsSelected = { viewModel.setAllImportItemsSelected(it) },
+                                onImportGoogleCalendarEvents = { targetMemberId, targetMemberName, overrideCat, onSuccess ->
+                                    viewModel.importGoogleCalendarEvents(targetMemberId, targetMemberName, overrideCat, onSuccess)
+                                },
+                                onClearGoogleCalendarEvents = { viewModel.clearGoogleCalendarEvents() },
                                 onAddEvent = { title, member, date, start, end, loc, cat, prio, priv, rem, rec ->
                                     viewModel.addEvent(title, member, date, start, end, loc, cat, prio, priv, rem, rec)
                                 },
+                                onUpdateEvent = { viewModel.updateEvent(it) },
                                 onDeleteEvent = { viewModel.deleteEvent(it) }
                             )
                         }
@@ -320,13 +337,28 @@ fun MainAppScreen(viewModel: FamilyViewModel) {
                         AppDestination.SETTINGS -> {
                             SettingsScreen(
                                 family = family,
+                                currentMember = currentMember,
                                 userEmail = viewModel.currentUser.value?.email,
+                                onUpdateFamily = { name, code ->
+                                    viewModel.updateFamily(name, code)
+                                },
+                                onUpdateCurrentMember = { name, email, role, age, emoji ->
+                                    viewModel.updateCurrentMember(name, email, role, age, emoji)
+                                },
                                 onSignOut = { viewModel.signOut() },
                                 onOpenOnboarding = { isOnboardingActive = true }
                             )
                         }
                         AppDestination.ONBOARDING -> {
-                            OnboardingScreen(onFinish = { currentDestination = AppDestination.TODAY })
+                            OnboardingScreen(
+                                currentName = currentMember?.name ?: "",
+                                currentEmail = currentMember?.email ?: "",
+                                currentFamilyName = family?.name ?: "",
+                                onFinish = { name, email, fam ->
+                                    viewModel.setupUserFamily(name, email, fam)
+                                    currentDestination = AppDestination.TODAY
+                                }
+                            )
                         }
                     }
                 }
@@ -412,4 +444,42 @@ fun MainAppScreen(viewModel: FamilyViewModel) {
             onCancel = { viewModel.cancelPendingAction() }
         )
     }
+}
+
+@Composable
+fun AddAnnouncementDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    var content by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Broadcast Family Announcement") },
+        text = {
+            OutlinedTextField(
+                value = content,
+                onValueChange = { content = it },
+                label = { Text("Announcement message") },
+                modifier = Modifier.fillMaxWidth().testTag("announcement_input"),
+                minLines = 3
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (content.isNotBlank()) {
+                        onConfirm(content.trim())
+                    }
+                },
+                modifier = Modifier.testTag("broadcast_announcement_btn")
+            ) {
+                Text("Broadcast")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }

@@ -49,7 +49,7 @@ sealed class AssistantAction {
 
     data class CreateAnnouncement(
         val content: String,
-        val authorName: String = "Sarah"
+        val authorName: String = "Family Admin"
     ) : AssistantAction()
 
     data class CreateDiaryEntry(
@@ -192,14 +192,14 @@ class LegacyAiService {
             return@withContext AssistantReply(summary)
         }
 
-        // 5. "Add soccer practice for Daniel every Tuesday at 5pm."
-        if (lower.contains("soccer") && (lower.contains("daniel") || lower.contains("add"))) {
+        // 5. "Add soccer practice every Tuesday at 5pm."
+        if (lower.contains("soccer") && lower.contains("practice")) {
             return@withContext AssistantReply(
-                messageText = "I found Daniel's soccer practice every Tuesday at 17:00.",
+                messageText = "I found soccer practice every Tuesday at 17:00.",
                 confirmationPrompt = "Would you like me to make this a recurring family event?",
                 pendingAction = AssistantAction.CreateEvent(
                     title = "Soccer Practice",
-                    memberName = "Daniel",
+                    memberName = currentMember.name,
                     date = "2026-10-06",
                     startTime = "17:00",
                     endTime = "18:15",
@@ -213,10 +213,10 @@ class LegacyAiService {
         // 6. "Remind everyone that Grandma's birthday is Saturday" / "Grandma"
         if (lower.contains("grandma") && (lower.contains("birthday") || lower.contains("remind"))) {
             return@withContext AssistantReply(
-                messageText = "Grandma Martha's 75th birthday is this Saturday, October 3rd.",
+                messageText = "Grandma's birthday is this Saturday, October 3rd.",
                 confirmationPrompt = "Would you like me to broadcast a family reminder and announcement to everyone?",
                 pendingAction = AssistantAction.CreateAnnouncement(
-                    content = "Reminder: Grandma's 75th birthday is this Saturday! Don't forget to prepare gifts and cards.",
+                    content = "Reminder: Grandma's birthday is this Saturday! Don't forget to prepare gifts and cards.",
                     authorName = currentMember.name
                 )
             )
@@ -237,17 +237,17 @@ class LegacyAiService {
         }
 
         // 8. "Add dinner with Grandma at 7pm Friday"
-        if (lower.contains("dinner") && (lower.contains("grandma") || lower.contains("friday") || lower.contains("7pm") || lower.contains("19:00"))) {
+        if (lower.contains("dinner") && (lower.contains("friday") || lower.contains("7pm") || lower.contains("19:00"))) {
             return@withContext AssistantReply(
-                messageText = "Dinner with Grandma Martha on Friday at 19:00.",
-                confirmationPrompt = "Would you like me to add \"Dinner with Grandma\" to the family calendar for Friday 19:00?",
+                messageText = "Family dinner on Friday at 19:00.",
+                confirmationPrompt = "Would you like me to add \"Family Dinner\" to the calendar for Friday 19:00?",
                 pendingAction = AssistantAction.CreateEvent(
-                    title = "Dinner with Grandma",
-                    memberName = "The Williams Family",
+                    title = "Family Dinner",
+                    memberName = currentMember.name,
                     date = "2026-10-02",
                     startTime = "19:00",
                     endTime = "21:00",
-                    location = "Bistro Verde / Grandma's House",
+                    location = "Bistro Verde",
                     category = "Family"
                 )
             )
@@ -299,7 +299,7 @@ class LegacyAiService {
         if (isApiKeyValid) {
             try {
                 val prompt = buildString {
-                    append("You are Legacy Assistant for the Williams family. Current user is ${currentMember.name} (${currentMember.role}). ")
+                    append("You are Legacy Assistant for the family. Current user is ${currentMember.name} (${currentMember.role}). ")
                     append("Respond naturally, warmly, and helpfully. Keep answers under 3 sentences. ")
                     append("User says: $userMessage")
                 }

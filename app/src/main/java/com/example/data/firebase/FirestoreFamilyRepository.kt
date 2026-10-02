@@ -22,7 +22,7 @@ class FirestoreFamilyRepository(
         displayName: String,
         email: String,
         role: String = "Family Administrator",
-        familyId: String = "williams_family",
+        familyId: String = "my_family",
         avatarEmoji: String = "👑"
     ) {
         val userDoc = db.collection("users").document(userId)
@@ -58,7 +58,7 @@ class FirestoreFamilyRepository(
     }
 
     // --- EVENTS ---
-    suspend fun saveEvent(event: FamilyEventEntity, userId: String, familyId: String = "williams_family") {
+    suspend fun saveEvent(event: FamilyEventEntity, userId: String, familyId: String = "my_family") {
         val docId = if (event.id > 0) "event_${event.id}" else "event_${System.currentTimeMillis()}"
         val docRef = db.collection("events").document(docId)
         val data = hashMapOf<String, Any>(
@@ -135,7 +135,7 @@ class FirestoreFamilyRepository(
     }
 
     // --- TASKS ---
-    suspend fun saveTask(task: FamilyTaskEntity, userId: String, familyId: String = "williams_family") {
+    suspend fun saveTask(task: FamilyTaskEntity, userId: String, familyId: String = "my_family") {
         val docId = if (task.id > 0) "task_${task.id}" else "task_${System.currentTimeMillis()}"
         val docRef = db.collection("tasks").document(docId)
         val data = hashMapOf<String, Any>(
@@ -189,7 +189,7 @@ class FirestoreFamilyRepository(
                         familyId = 1,
                         title = doc.getString("title") ?: "",
                         assignedMemberId = 1,
-                        assignedMemberName = doc.getString("assignedTo") ?: "Daniel",
+                        assignedMemberName = doc.getString("assignedTo") ?: "Family Member",
                         dueDate = doc.getString("dueDate") ?: "",
                         dueTime = doc.getString("dueTime") ?: "19:00",
                         isCompleted = doc.getBoolean("isCompleted") ?: false,
@@ -207,7 +207,7 @@ class FirestoreFamilyRepository(
     }
 
     // --- ALARMS ---
-    suspend fun saveAlarm(alarm: FamilyAlarmEntity, userId: String, familyId: String = "williams_family") {
+    suspend fun saveAlarm(alarm: FamilyAlarmEntity, userId: String, familyId: String = "my_family") {
         val docId = if (alarm.id > 0) "alarm_${alarm.id}" else "alarm_${System.currentTimeMillis()}"
         val docRef = db.collection("alarms").document(docId)
         val data = hashMapOf<String, Any>(
@@ -276,7 +276,7 @@ class FirestoreFamilyRepository(
     }
 
     // --- DIARY ---
-    suspend fun saveDiaryEntry(entry: DiaryEntryEntity, userId: String, familyId: String = "williams_family") {
+    suspend fun saveDiaryEntry(entry: DiaryEntryEntity, userId: String, familyId: String = "my_family") {
         val docId = if (entry.id > 0) "diary_${entry.id}" else "diary_${System.currentTimeMillis()}"
         val docRef = db.collection("diary").document(docId)
         val data = hashMapOf<String, Any>(
@@ -329,7 +329,7 @@ class FirestoreFamilyRepository(
                         id = numericId,
                         familyId = 1,
                         authorId = 1,
-                        authorName = doc.getString("authorName") ?: "Sarah",
+                        authorName = doc.getString("authorName") ?: "Family Admin",
                         date = doc.getString("date") ?: "",
                         title = doc.getString("title") ?: "",
                         text = doc.getString("content") ?: "",
@@ -348,7 +348,7 @@ class FirestoreFamilyRepository(
     }
 
     // --- SHOPPING ---
-    suspend fun saveShoppingItem(item: ShoppingItemEntity, userId: String, familyId: String = "williams_family") {
+    suspend fun saveShoppingItem(item: ShoppingItemEntity, userId: String, familyId: String = "my_family") {
         val docId = if (item.id > 0) "shop_${item.id}" else "shop_${System.currentTimeMillis()}"
         val docRef = db.collection("shopping").document(docId)
         val data = hashMapOf<String, Any>(

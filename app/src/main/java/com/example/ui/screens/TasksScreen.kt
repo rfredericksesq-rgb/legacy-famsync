@@ -385,8 +385,7 @@ fun EditTaskDialog(
 
                 Text("Priority", style = MaterialTheme.typography.labelMedium)
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    items(priorities.size) { i ->
-                        val p = priorities[i]
+                    priorities.forEach { p ->
                         FilterChip(
                             selected = priority == p,
                             onClick = { priority = p },

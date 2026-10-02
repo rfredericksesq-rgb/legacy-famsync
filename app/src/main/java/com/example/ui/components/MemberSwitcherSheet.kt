@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.*
@@ -145,7 +146,7 @@ fun MemberSwitcherSheet(
                     .fillMaxWidth()
                     .testTag("sheet_add_member_btn")
             ) {
-                Icon(imageVector = Icons.Default.PersonAdd, contentDescription = null)
+                Icon(imageVector = Icons.Default.Add, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Add New Family Member")
             }

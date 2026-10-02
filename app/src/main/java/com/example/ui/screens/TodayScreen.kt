@@ -69,9 +69,10 @@ fun TodayScreen(
         // 1. Header Greeting
         item {
             Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                val memberName = currentMember?.name?.takeIf { it.isNotBlank() } ?: "there"
                 Text(
-                    text = if (isEveningBriefing) "Good evening, ${currentMember?.name ?: "Sarah"} 🌙"
-                    else "Good morning, ${currentMember?.name ?: "Sarah"} 👋",
+                    text = if (isEveningBriefing) "Good evening, $memberName 🌙"
+                    else "Good morning, $memberName 👋",
                     style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -224,20 +225,28 @@ fun TodayScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             modifier = Modifier.padding(top = 6.dp)
                         ) {
-                            Button(
-                                onClick = { onResolveConflict(conflict, "Mark (Dad)") },
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                                modifier = Modifier.testTag("resolve_assign_dad")
-                            ) {
-                                Text("Assign Dad", fontSize = 12.sp)
-                            }
-                            OutlinedButton(
-                                onClick = { onResolveConflict(conflict, "Sarah (Mom)") },
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                                modifier = Modifier.testTag("resolve_assign_mom")
-                            ) {
-                                Text("Assign Mom", fontSize = 12.sp, color = Color(0xFF991B1B))
+                            val availableMembers = members.take(2)
+                            if (availableMembers.isNotEmpty()) {
+                                availableMembers.forEachIndexed { index, m ->
+                                    Button(
+                                        onClick = { onResolveConflict(conflict, m.name) },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = if (index == 0) Color(0xFFDC2626) else MaterialTheme.colorScheme.secondary
+                                        ),
+                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                        modifier = Modifier.testTag("resolve_assign_${m.name.lowercase().replace(" ", "_")}")
+                                    ) {
+                                        Text("Assign ${m.name}", fontSize = 12.sp)
+                                    }
+                                }
+                            } else {
+                                Button(
+                                    onClick = { onResolveConflict(conflict, currentMember?.name ?: "Family Member") },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                ) {
+                                    Text("Assign Member", fontSize = 12.sp)
+                                }
                             }
                             TextButton(
                                 onClick = { /* leave unresolved */ },

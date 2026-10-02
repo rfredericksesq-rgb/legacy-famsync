@@ -89,6 +89,32 @@ class FamilyRepository(private val dao: FamilyDao) {
 
     suspend fun deleteEvent(event: FamilyEventEntity) = dao.deleteEvent(event)
 
+    suspend fun insertEvents(events: List<FamilyEventEntity>) {
+        dao.insertEvents(events)
+        dao.insertNotification(
+            AppNotificationEntity(
+                familyId = 1,
+                title = "Google Calendar Synced",
+                description = "Successfully imported ${events.size} event(s) into your unified family schedule.",
+                timestamp = "Just now",
+                iconType = "event"
+            )
+        )
+    }
+
+    suspend fun clearGoogleCalendarEvents() {
+        dao.deleteGoogleCalendarEvents()
+        dao.insertNotification(
+            AppNotificationEntity(
+                familyId = 1,
+                title = "Google Calendar Cleared",
+                description = "Removed imported Google Calendar events from family schedule.",
+                timestamp = "Just now",
+                iconType = "event"
+            )
+        )
+    }
+
     suspend fun insertTask(task: FamilyTaskEntity): Long {
         val id = dao.insertTask(task)
         dao.insertNotification(

@@ -90,6 +90,9 @@ interface FamilyDao {
     @Delete
     suspend fun deleteEvent(event: FamilyEventEntity)
 
+    @Query("DELETE FROM family_events WHERE isGoogleCalendarImport = 1")
+    suspend fun deleteGoogleCalendarEvents()
+
     // Tasks
     @Query("SELECT * FROM family_tasks WHERE familyId = :familyId ORDER BY isCompleted ASC, dueDate ASC, dueTime ASC")
     fun getAllTasks(familyId: Int): Flow<List<FamilyTaskEntity>>
